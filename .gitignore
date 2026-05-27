@@ -21,6 +21,7 @@ venv/
 # Project artifacts
 Output/
 .tmp/
+uv.lock
 
 # OS
 .DS_Store
