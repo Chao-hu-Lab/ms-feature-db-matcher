@@ -41,3 +41,19 @@ def test_load_database_table_accepts_mz_column_for_dna(tmp_path) -> None:
 
     assert "Mz" in table.columns
     assert list(table["Short name"]) == ["dX"]
+
+
+def test_load_database_table_canonicalizes_source_column_for_dna(tmp_path) -> None:
+    path = tmp_path / "dna.xlsx"
+    pd.DataFrame(
+        {
+            "Short name": ["dX"],
+            "Mz": [268.1052],
+            "source": ["DNA DB"],
+        }
+    ).to_excel(path, index=False)
+
+    table = load_database_table(path, DatabaseMode.DNA, use_default_profile=False)
+
+    assert "Source" in table.columns
+    assert list(table["Source"]) == ["DNA DB"]

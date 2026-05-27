@@ -25,6 +25,7 @@ _SHARED_CANONICAL: dict[str, str] = {
     "precursor ion m/z": "Precursor Ion m/z",
     "formula": "Formula",
     "molecular formula": "Formula",
+    "source": "Source",
 }
 
 _DNA_CANONICAL: dict[str, str] = {**_SHARED_CANONICAL}
