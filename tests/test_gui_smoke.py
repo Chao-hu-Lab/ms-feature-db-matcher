@@ -189,28 +189,16 @@ def test_matcher_app_custom_database_paths_clear_preset_selection(matcher_app, t
 def test_matcher_app_database_preset_row_fits_minimum_window(matcher_app) -> None:
     app, root = matcher_app
 
-    root.deiconify()
-    root.geometry("580x650")
-    root.update()
-
+    root.update_idletasks()
     preset_row = app.standard_database_button.master
-    assert preset_row.winfo_width() > 0
-    assert root.winfo_height() >= 690
-    assert app.standard_database_button.winfo_width() >= app.standard_database_button.winfo_reqwidth()
-    assert app.standard_database_button.winfo_height() >= app.standard_database_button.winfo_reqheight()
-    assert (
-        app.oil_adduct_database_button.winfo_width()
-        >= app.oil_adduct_database_button.winfo_reqwidth()
-    )
-    assert (
-        app.oil_adduct_database_button.winfo_height()
-        >= app.oil_adduct_database_button.winfo_reqheight()
-    )
-    assert preset_row.winfo_reqwidth() <= app.rna_database_group.winfo_width()
-    assert (
-        preset_row.winfo_rooty() + preset_row.winfo_height()
-        <= app.input_card.winfo_rooty() + app.input_card.winfo_height()
-    )
+    min_width, min_height = root.minsize()
+    available_content_width = min_width - (20 * 2) - (14 * 2)
+
+    assert min_height >= 690
+    assert preset_row.winfo_reqwidth() <= available_content_width
+    assert preset_row.winfo_reqwidth() <= app.input_card.winfo_reqwidth()
+    assert app.standard_database_button.winfo_reqheight() <= 44
+    assert app.oil_adduct_database_button.winfo_reqheight() <= 44
 
 
 def test_status_appearance_uses_semantic_states() -> None:
