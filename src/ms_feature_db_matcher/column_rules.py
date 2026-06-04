@@ -16,6 +16,9 @@ DATASET_FEATURE_COLUMNS = {
 } | UNIVERSAL_MASS_COLUMNS
 NAME_COLUMNS = {"short name", "compound"}
 FORMULA_COLUMNS = {"formula", "molecular formula"}
+SOURCE_COLUMNS = {"source"}
+TAGS_COLUMNS = {"tags matched", "tags"}
+RNA_SUBTYPE_COLUMNS = {"rna subtype", "rna sub-type", "rna_subtype"}
 
 
 def normalize_label(label: object) -> str:
