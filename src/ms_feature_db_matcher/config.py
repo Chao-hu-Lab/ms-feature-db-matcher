@@ -31,6 +31,7 @@ def database_dir() -> Path:
 
 DEFAULT_DNA_PATH = database_dir() / "datatables.xlsx"
 DEFAULT_RNA_PATH = database_dir() / "natural_modifications.xlsx"
+DEFAULT_OIL_ADDUCT_PATH = database_dir() / "oil_adduct_database.xlsx"
 
 
 def project_root() -> Path:

@@ -19,6 +19,7 @@ dev = ["pytest>=8.0"]
 
 [project.scripts]
 ms-feature-db-matcher = "ms_feature_db_matcher.gui:launch_app"
+ms-feature-db-import-oil-adducts = "ms_feature_db_matcher.adduct_importer:main"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]

@@ -41,7 +41,7 @@ When matching, the app looks for mass values in these database columns:
 
 The database must also contain a **Short name** (or **Compound**) column. A **Formula** (or **Molecular Formula**) column is optional — if present, matched formulas are included in the output.
 
-For DNA databases, a **Source** column is optional. When present, DNA only and DNA + RNA modes include matched DNA source values in the output. RNA databases do not require or provide Source.
+For DNA databases, a **Source** column is optional. When present, DNA only and DNA + RNA modes include matched DNA source values in the output. RNA databases do not require Source; if a custom RNA database includes Source metadata, it is preserved as database metadata but RNA-only output still does not append a Matched Source column.
 
 ## Matching Modes
 
@@ -61,7 +61,7 @@ When a mode includes RNA matching, the GUI provides a compact RNA subtype select
 | MeR | Include methylated RNA hits only |
 | R + MeR | Include both RNA and MeR hits; this is the default and preserves the previous behavior |
 
-R and MeR use the same RNA database. MeR entries are identified from matched RNA short names that end with `m`. In DNA only mode, the RNA subtype selector is disabled and ignored.
+R and MeR use the same RNA database. If the RNA database provides an **RNA Subtype** column, values containing `MeR` are treated as MeR and `R` is treated as RNA. Without that column, MeR entries are identified from matched RNA short names that end with `m`. In DNA only mode, the RNA subtype selector is disabled and ignored.
 
 ## Matching Rule
 
@@ -89,6 +89,31 @@ Bundled in the `database/` folder:
 | `natural_modifications.xlsx` | RNA |
 
 You can replace either database from the GUI.
+
+## Oil Adduct Workbook Import
+
+The app can read the curated oil adduct workbook format that contains `DNA 總表` and `RNA 總表` sheets. When that raw workbook is selected as a DNA or RNA database, the loader uses the mode-specific sheet instead of the first `Database` sheet.
+
+For reviewable database files, export the workbook into canonical DNA/RNA databases:
+
+```powershell
+python -m ms_feature_db_matcher.adduct_importer "C:\Users\user\Downloads\oil DNA RNA adduct_詳細版_V3.0.xlsx" --output-dir database
+```
+
+or, after installing the package:
+
+```powershell
+ms-feature-db-import-oil-adducts "C:\Users\user\Downloads\oil DNA RNA adduct_詳細版_V3.0.xlsx" --output-dir database
+```
+
+The importer writes:
+
+| Output File | Mode |
+|---|---|
+| `oil_adduct_dna.xlsx` | DNA |
+| `oil_adduct_rna.xlsx` | RNA |
+
+Both exports normalize `Adduct` / `Chemical` into **Short name**, normalize mass columns into **Charged monoisotopic mass**, preserve **Source**, and convert Source cell fill colors into **Source Group**. RNA exports also include **RNA Subtype** so R / MeR filtering does not depend only on short-name suffixes.
 
 ## Supported Dataset Formats
 

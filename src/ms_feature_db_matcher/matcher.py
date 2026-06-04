@@ -8,6 +8,7 @@ from .column_rules import (
     FORMULA_COLUMNS,
     NAME_COLUMNS,
     RNA_EXTRA_MASS_COLUMNS,
+    RNA_SUBTYPE_COLUMNS,
     SOURCE_COLUMNS,
     TAGS_COLUMNS,
     UNIVERSAL_MASS_COLUMNS,
@@ -95,6 +96,41 @@ def _collect_hits(
     return names, formulas, sources
 
 
+def _collect_rna_hits(
+    table: pd.DataFrame,
+    mass_candidates: set[str],
+    feature_mz: float,
+) -> tuple[list[str], list[str], list[str]]:
+    name_col = find_column(table.columns, NAME_COLUMNS)
+    mass_col = find_column(table.columns, mass_candidates)
+    if name_col is None or mass_col is None:
+        return [], [], []
+    formula_col = find_column(table.columns, FORMULA_COLUMNS)
+    subtype_col = find_column(table.columns, RNA_SUBTYPE_COLUMNS)
+    names: list[str] = []
+    formulas: list[str] = []
+    subtypes: list[str] = []
+    for _, row in table.iterrows():
+        try:
+            if ppm_difference(feature_mz, parse_mz_value(row[mass_col])) <= 20:
+                names.append(str(row[name_col]))
+                formulas.append(_clean_optional_text(row[formula_col]) if formula_col is not None else "")
+                subtypes.append(_clean_optional_text(row[subtype_col]) if subtype_col is not None else "")
+        except (TypeError, ValueError, ZeroDivisionError):
+            continue
+    return names, formulas, subtypes
+
+
+def _is_mer_hit(name: str, subtype: str) -> bool:
+    normalized_subtype = subtype.strip().lower().replace("-", "").replace("_", "").replace(" ", "")
+    if normalized_subtype:
+        if "mer" in normalized_subtype:
+            return True
+        if normalized_subtype == "r":
+            return False
+    return name.endswith("m")
+
+
 def _parse_allowed_tags(raw_tag: object) -> set[str]:
     if raw_tag is None or (isinstance(raw_tag, float) and pd.isna(raw_tag)):
         return {"2", "3"}
@@ -151,11 +187,11 @@ def build_match_column(
                 dna, UNIVERSAL_MASS_COLUMNS, feature_mz, collect_source=True
             )
         if mode in (MatchMode.RNA, MatchMode.BOTH):
-            all_rna_names, all_rna_formulas, _ = _collect_hits(
+            all_rna_names, all_rna_formulas, all_rna_subtypes = _collect_rna_hits(
                 rna, UNIVERSAL_MASS_COLUMNS | RNA_EXTRA_MASS_COLUMNS, feature_mz
             )
-            for name, formula in zip(all_rna_names, all_rna_formulas):
-                if name.endswith("m"):
+            for name, formula, subtype in zip(all_rna_names, all_rna_formulas, all_rna_subtypes):
+                if _is_mer_hit(name, subtype):
                     mer_names.append(name)
                     mer_formulas.append(formula)
                 else:

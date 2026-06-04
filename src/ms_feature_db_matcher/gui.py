@@ -8,10 +8,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from tkinter import filedialog, messagebox
 
-from .config import DEFAULT_DNA_PATH, DEFAULT_RNA_PATH, ensure_output_dir
+from .config import DEFAULT_DNA_PATH, DEFAULT_OIL_ADDUCT_PATH, DEFAULT_RNA_PATH, ensure_output_dir
 from .exporter import export_workbook_results
 from .io_utils import read_dataset_sheets
 from .matcher import MatchMode, RnaSubtypeMode, build_match_column
+from .adduct_importer import is_oil_adduct_workbook
 from .profiles import DatabaseMode, load_database_table
 
 OUTPUT_FORMULA_COLUMN_NAME = "Matched Formula"
@@ -91,6 +92,18 @@ def _same_path(left: Path, right: Path) -> bool:
 
 def path_badge_text(current: Path, default: Path) -> str:
     return "Default" if _same_path(current, default) else "Custom"
+
+
+def database_badge_text(current: Path, default: Path) -> str:
+    if _same_path(current, default):
+        return "Default"
+    if current.exists() and current.suffix.lower() in {".xlsx", ".xlsm"}:
+        try:
+            if is_oil_adduct_workbook(current):
+                return "Oil adduct"
+        except Exception:
+            pass
+    return "Custom"
 
 
 def mode_label(mode: MatchMode) -> str:
@@ -233,8 +246,8 @@ class MatcherApp:
         self.state = state
         self.root.title("MS Feature DB Matcher")
         self.root.configure(bg=COLORS["app_bg"])
-        self.root.geometry("640x640")
-        self.root.minsize(580, 600)
+        self.root.geometry("640x690")
+        self.root.minsize(580, 690)
 
         self.dataset_var = tk.StringVar(value="")
         self.dna_var = tk.StringVar(value=str(state.dna_db_path))
@@ -249,6 +262,8 @@ class MatcherApp:
 
         self.mode_tiles: dict[MatchMode, dict[str, tk.Widget]] = {}
         self.rna_subtype_buttons: dict[RnaSubtypeMode, tk.Button] = {}
+        self.standard_database_button: tk.Button | None = None
+        self.oil_adduct_database_button: tk.Button | None = None
         self.run_button: tk.Button | None = None
         self.status_frame: tk.Frame | None = None
         self.status_title_label: tk.Label | None = None
@@ -290,6 +305,7 @@ class MatcherApp:
 
         # ── Input Files card ──
         input_card = self._create_card(shell, "Input Files")
+        self.input_card = input_card
         input_card.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
         input_card.columnconfigure(0, weight=1)
 
@@ -305,13 +321,32 @@ class MatcherApp:
             command=self._choose_dna_db,
             filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
         )
-        self._add_file_picker(
+        self.rna_database_group = self._add_file_picker(
             input_card, row=2, label="RNA Database",
             variable=self.rna_var, badge_var=self.rna_badge_var,
             command=self._choose_rna_db,
             filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
         )
-
+        database_preset_row = tk.Frame(self.rna_database_group, bg=COLORS["card_bg"])
+        database_preset_row.grid(row=2, column=0, columnspan=2, sticky="ew", pady=(4, 0))
+        for col in range(2):
+            database_preset_row.columnconfigure(col, weight=1, uniform="database_preset")
+        self.standard_database_button = self._make_button(
+            database_preset_row,
+            text="Standard DB",
+            command=self._apply_standard_default_database,
+            primary=False,
+            width=15,
+        )
+        self.standard_database_button.grid(row=0, column=0, sticky="ew", padx=(0, 4))
+        self.oil_adduct_database_button = self._make_button(
+            database_preset_row,
+            text="Oil Adduct DB",
+            command=self._apply_oil_default_database,
+            primary=False,
+            width=15,
+        )
+        self.oil_adduct_database_button.grid(row=0, column=1, sticky="ew", padx=(4, 0))
         # ── Matching Mode card ──
         mode_card = self._create_card(shell, "Matching Mode")
         mode_card.grid(row=2, column=0, sticky="ew", pady=(0, 8))
@@ -407,9 +442,9 @@ class MatcherApp:
         self, frame: tk.Frame, row: int, label: str,
         variable: tk.StringVar, badge_var: tk.StringVar,
         command, filetypes,
-    ) -> None:
+    ) -> tk.Frame:
         group = tk.Frame(frame, bg=COLORS["card_bg"])
-        group.grid(row=row + 1, column=0, sticky="ew", pady=(0, 6 if row < 2 else 0))
+        group.grid(row=row + 1, column=0, sticky="ew", pady=(0, 8 if row < 2 else 0))
         group.columnconfigure(0, weight=1)
 
         # Label + inline badge
@@ -441,6 +476,7 @@ class MatcherApp:
         browse = self._make_button(group, text="Browse", command=command, primary=False, width=7)
         browse.grid(row=1, column=1, sticky="e")
         browse.configure(command=lambda: command(filetypes))
+        return group
 
     def _create_mode_tile(self, parent: tk.Frame, mode: MatchMode) -> dict[str, tk.Widget]:
         frame = tk.Frame(
@@ -527,6 +563,23 @@ class MatcherApp:
             self.state.rna_db_path = Path(path)
             self.rna_var.set(path)
 
+    def _apply_standard_default_database(self) -> None:
+        self.state.dna_db_path = DEFAULT_DNA_PATH
+        self.state.rna_db_path = DEFAULT_RNA_PATH
+        self.dna_var.set(str(DEFAULT_DNA_PATH))
+        self.rna_var.set(str(DEFAULT_RNA_PATH))
+        self.status_var.set("Standard default databases selected.")
+
+    def _apply_oil_default_database(self) -> None:
+        self._apply_oil_adduct_database(DEFAULT_OIL_ADDUCT_PATH)
+
+    def _apply_oil_adduct_database(self, path: Path) -> None:
+        self.state.dna_db_path = path
+        self.state.rna_db_path = path
+        self.dna_var.set(str(path))
+        self.rna_var.set(str(path))
+        self.status_var.set(f"Oil adduct database: {_truncate_path(path)}")
+
     def _select_mode(self, mode: MatchMode) -> None:
         self.mode_var.set(mode.value)
 
@@ -542,8 +595,8 @@ class MatcherApp:
         rna_path = Path(self.rna_var.get()) if self.rna_var.get().strip() else DEFAULT_RNA_PATH
 
         self.dataset_badge_var.set("Required" if not dataset_text else "Ready")
-        self.dna_badge_var.set(path_badge_text(dna_path, DEFAULT_DNA_PATH))
-        self.rna_badge_var.set(path_badge_text(rna_path, DEFAULT_RNA_PATH))
+        self.dna_badge_var.set(database_badge_text(dna_path, DEFAULT_DNA_PATH))
+        self.rna_badge_var.set(database_badge_text(rna_path, DEFAULT_RNA_PATH))
 
         # Update status: dataset-missing warning, or ready state
         if not dataset_text:
@@ -555,6 +608,7 @@ class MatcherApp:
         selected_mode = MatchMode(self.mode_var.get())
         selected_subtype = RnaSubtypeMode(self.rna_subtype_var.get())
         self._refresh_mode_tiles(selected_mode)
+        self._refresh_database_preset_buttons(dna_path, rna_path)
         self._refresh_rna_subtype_buttons(selected_mode, selected_subtype)
         self._refresh_status()
 
@@ -569,6 +623,30 @@ class MatcherApp:
             border = COLORS["primary"] if selected else COLORS["secondary_border"]
             widgets["frame"].configure(bg=frame_bg, highlightbackground=border)
             widgets["title"].configure(bg=frame_bg, fg=title_fg)
+
+    def _refresh_database_preset_buttons(self, dna_path: Path, rna_path: Path) -> None:
+        if self.standard_database_button is None or self.oil_adduct_database_button is None:
+            return
+
+        standard_selected = _same_path(dna_path, DEFAULT_DNA_PATH) and _same_path(
+            rna_path, DEFAULT_RNA_PATH
+        )
+        oil_selected = _same_path(dna_path, DEFAULT_OIL_ADDUCT_PATH) and _same_path(
+            rna_path, DEFAULT_OIL_ADDUCT_PATH
+        )
+        for button, selected in (
+            (self.standard_database_button, standard_selected),
+            (self.oil_adduct_database_button, oil_selected),
+        ):
+            button.configure(
+                bg=COLORS["primary"] if selected else COLORS["secondary_bg"],
+                fg=COLORS["button_text"] if selected else COLORS["title"],
+                activebackground=(
+                    COLORS["primary_active"] if selected else COLORS["secondary_hover"]
+                ),
+                activeforeground=COLORS["button_text"] if selected else COLORS["title"],
+                highlightbackground=COLORS["primary"] if selected else COLORS["secondary_border"],
+            )
 
     def _refresh_rna_subtype_buttons(
         self,

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from .adduct_importer import is_oil_adduct_workbook, load_oil_adduct_table
 from .column_rules import FORMULA_COLUMNS, NAME_COLUMNS, RNA_EXTRA_MASS_COLUMNS, UNIVERSAL_MASS_COLUMNS, normalize_label
 
 
@@ -26,6 +27,9 @@ _SHARED_CANONICAL: dict[str, str] = {
     "formula": "Formula",
     "molecular formula": "Formula",
     "source": "Source",
+    "source group": "Source Group",
+    "adduct category": "Adduct Category",
+    "rna subtype": "RNA Subtype",
 }
 
 _DNA_CANONICAL: dict[str, str] = {**_SHARED_CANONICAL}
@@ -66,6 +70,8 @@ def load_database_table(path: Path, mode: DatabaseMode, use_default_profile: boo
         table = _find_matching_sheet(path, mode, headers=(1,))
         if table is not None:
             return table
+    if is_oil_adduct_workbook(path):
+        return load_oil_adduct_table(path, mode)
 
     table = _find_matching_sheet(path, mode, headers=(0, 1))
     if table is not None:
