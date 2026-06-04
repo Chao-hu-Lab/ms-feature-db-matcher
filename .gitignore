@@ -21,6 +21,7 @@ venv/
 # Project artifacts
 Output/
 .tmp/
+.uv-cache/
 uv.lock
 
 # OS

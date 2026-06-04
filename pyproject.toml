@@ -26,6 +26,7 @@ pythonpath = ["src"]
 addopts = "-p no:cacheprovider"
 norecursedirs = [
     ".tmp",
+    ".uv-cache",
     "pytest-cache-files-*",
     "pytest_tmp",
     "test_artifacts",
