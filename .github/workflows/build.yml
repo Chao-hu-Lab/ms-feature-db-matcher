@@ -21,4 +21,7 @@ jobs:
       spec-file: "ms_feature_db_matcher.spec"
       executable-name: "MS Feature DB Matcher"
       artifact-prefix: "MS-Feature-DB-Matcher"
+      # The shared workflow embeds this JSON inside a double-quoted shell command.
+      # Keep quotes escaped so bash passes valid JSON to Python.
+      platforms: '[\"windows\", \"macos\"]'
       extra-package-files: '[{"src":"README.md","dst":"README.md"}]'
